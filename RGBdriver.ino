@@ -98,20 +98,18 @@ void pora(struct czas *t){
    }   
 }
 
-void wschodzi(struct czas *t, int kanal){
+void wschodzi(struct czas *t, int kanal, int maxPower, int dzien, int wschod){
   int kierunek = HIGH;
-  int rozciagniecie;
   if (t->milisekundy == 0)
-    rozciagniecie++;
-  //int temp = map(rozciagniecie, 0, wschod1, 0, maxPower1);
-  softPWM(kanal, rozciagniecie, kierunek);
+    rozciagniecie++; 
+  int tmp = (maxPower / (dzien-wschod))*rozciagniecie;
+  softPWM(kanal, tmp, kierunek);
 }
 
-void zachodzi(struct czas *t, int kanal){
+void zachodzi(struct czas *t, int kanal, int maxPower, int noc, int zachod){
   int kierunek = LOW;
-  int rozciagniecie;
-  if(t->milisekundy == 0)
-    rozciagniecie++;
- // int temp = map(rozciagniecie, 0, zachod1, 0, maxPower1);    //rozciagniecie przeskalowuje sie automatycznie od nocy (tj. 0) do dnia (tj. maxPower) 
- // softPWM(kanal, temp, kierunek);
+  if (t->milisekundy == 0)
+    rozciagniecie++; 
+  int tmp = (maxPower / (noc-zachod))*rozciagniecie;
+  softPWM(kanal, tmp, kierunek);
 }
