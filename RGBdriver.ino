@@ -32,80 +32,90 @@ const int maxPower1 = 30;
 const int maxPower2 = 30;
 const int maxPower3 = 30;
 
-struct czas{
+struct czas {
   int milisekundy;
   int sekundy;
 };
 struct czas aktualny;
 
 int rozciagniecie;
+#include <Wire.h>
+#include "RTClib.h"
+
+
+RTC_Millis rtc;
 
 void setup() {
   // put your setup code here, to run once:
   pinMode(pwm1, OUTPUT);
   pinMode(pwm2, OUTPUT);
   pinMode(pwm3, OUTPUT);
+  Serial.begin(57600);
+  // following line sets the RTC to the date & time this sketch was compiled
+  rtc.begin(DateTime(__DATE__, __TIME__));
 }
 
-void loop() {   
-  zegar(&aktualny);
+void loop() {
+  DateTime now = rtc.now();
+  //zegar(&aktualny);
+  aktualny.sekundy = now.minute() * 60 + now.second();
   pora(&aktualny, pwm1, maxPower1, wschod1, dzien1, zachod1, noc1);
   pora(&aktualny, pwm2, maxPower2, wschod2, dzien2, zachod2, noc2);
   pora(&aktualny, pwm3, maxPower3, wschod3, dzien3, zachod3, noc3);
 }
 
 bool stan = LOW;
-void zegar(struct czas *t){
+void zegar(struct czas *t) {
   delay(1);
   t->milisekundy++;
-  if(t->milisekundy==999){
-    t->milisekundy=0;
+  if (t->milisekundy == 999) {
+    t->milisekundy = 0;
     t->sekundy++;
   }
-  if(aktualny.sekundy == 86400){           //doba 86400 sekund
+  if (aktualny.sekundy == 86400) {         //doba 86400 sekund
     aktualny.sekundy = 0;
   }
 }
 
-void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zachod, int noc){
-  if(t->sekundy < wschod) {
+void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zachod, int noc) {
+  if (t->sekundy < wschod) {
     wschodzi(&aktualny, pwm, maxPower, wschod, dzien);
-  }  
-  if( dzien < t->sekundy) {
+  }
+  if ( dzien < t->sekundy) {
     analogWrite(pwm, maxPower);
   }
-  if(zachod < t->sekundy) {
+  if (zachod < t->sekundy) {
     zachodzi(&aktualny, pwm, maxPower, zachod, noc);
   }
 
   //to przypisane czasu potrzebne jest tylko do testu, zeby skrocic petle
-  if(noc < t->sekundy) {
+  if (noc < t->sekundy) {
     digitalWrite(pwm, LOW);
- //   aktualny.sekundy = 0; //--------------------//
-  }  
+    //   aktualny.sekundy = 0; //--------------------//
+  }
 }
 
 void wschodzi(struct czas *t, int kanal, int maxPower, int wschod, int dzien) {
   int kierunek = HIGH;
   if (t->milisekundy == 0)
-    rozciagniecie++; 
-  int tmp = (maxPower / (dzien-wschod))*rozciagniecie;
+    rozciagniecie++;
+  int tmp = (maxPower / (dzien - wschod)) * rozciagniecie;
   softPWM(kanal, tmp, kierunek);
 }
 
-void zachodzi(struct czas *t, int kanal, int maxPower, int noc, int zachod){
+void zachodzi(struct czas *t, int kanal, int maxPower, int noc, int zachod) {
   int kierunek = LOW;
-  if(t->milisekundy == 0)
-    rozciagniecie++; 
-  int tmp = (maxPower / (noc-zachod))*rozciagniecie;
+  if (t->milisekundy == 0)
+    rozciagniecie++;
+  int tmp = (maxPower / (noc - zachod)) * rozciagniecie;
   softPWM(kanal, tmp, kierunek);
 }
 
-void softPWM(int kanal, int wypelnienie, bool kierunek){
-    for( int i = 0 ; i < 1000 ; i++) {
-      if( i < wypelnienie)
-        digitalWrite(kanal,kierunek);
-      else 
-        digitalWrite(kanal,!kierunek);
-    }
+void softPWM(int kanal, int wypelnienie, bool kierunek) {
+  for ( int i = 0 ; i < 1000 ; i++) {
+    if ( i < wypelnienie)
+      digitalWrite(kanal, kierunek);
+    else
+      digitalWrite(kanal, !kierunek);
+  }
 }
