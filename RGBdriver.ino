@@ -1,36 +1,36 @@
 //// Piny PWM /////////////////////////
-#define pwm1 0                   
-#define pwm2 1               
-#define pwm3 4   
+const int pwm1 = 0;
+const int pwm2 = 1;
+const int pwm3 = 4;
 
 //definicje godziny wschodu, podane w sekundach mierzonych od polnocy
 //np. wschod o 6.00 to 6*3600 + 0*60 = 21600
-#define wschod1 15
-#define wschod2 15
-#define wschod3 15
+const int wschod1 = 0;
+const int wschod2 = 20;
+const int wschod3 = 15;
 
 //definicje godziny poranka, podane w sekundach mierzonych od polnocy
 //np. dzien o 6.15 to 6*3600 + 15*60 = 22500
-#define dzien1  30
-#define dzien2  30
-#define dzien3  30
+const int dzien1  = 0;
+const int dzien2  = 35;
+const int dzien3  = 30;
 
 //definicje godziny zachodu, podane w sekundach mierzonych od polnocy
 //np. zachod o 20.00 to 22*3600 + 0*60 = 72000
-#define zachod1 45
-#define zachod2 45
-#define zachod3 45
+const int zachod1 = 15;
+const int zachod2 = 50;
+const int zachod3 = 45;
 
 //definicje godziny poranka, podane w sekundach mierzonych od polnocy
 //np. noc o 20.15 to 22*3600 + 15*60 = 72900
-#define noc1 60
-#define noc2 60
-#define noc3 60
+const int noc1 = 30;
+const int noc2 = 65;
+const int noc3 = 60;
 
 //// Maksymalna moc kanalu [%] //////
-#define maxPower1 30
-#define maxPower2 30
-#define maxPower3 30
+const int maxPower1 = 30;
+const int maxPower2 = 30;
+const int maxPower3 = 30;
 
 struct czas{
   int milisekundy;
