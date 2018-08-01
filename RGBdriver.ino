@@ -1,7 +1,7 @@
 //// Piny PWM /////////////////////////
-const int pwm1 = 0;
-const int pwm2 = 1;
-const int pwm3 = 4;
+const int pwm1 = 9;
+const int pwm2 = 10;
+const int pwm3 = 11;
 const int sensor = 6;
 const int prog = 3;
 
@@ -44,16 +44,39 @@ struct czas {
 };
 struct czas aktualny;
 
+int rozciagniecie;
+#include <Wire.h>
+#include "RTClib.h"
+
+
+RTC_Millis rtc;
+
 void setup() {
   //deklaracje wejsc/wyjsc
   pinMode(pwm1, OUTPUT);
   pinMode(pwm2, OUTPUT);
   pinMode(pwm3, OUTPUT);
-  //pinMode(sensor, INPUT);
+  pinMode(sensor, INPUT);
+
+  //debugging z RTC
+  Serial.begin(57600);
+  rtc.adjust(DateTime(2014, 1, 21, 0, 0, 0));
+  rtc.begin();
 }
 
 void loop() {
-  zegar(&aktualny);
+
+  //debugging z RTC
+  DateTime now = rtc.now();
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.print(now.second(), DEC);
+  aktualny.sekundy = now.minute() * 60 + now.second();
+
+
+  //zegar(&aktualny);
   pora(&aktualny, pwm1, maxPower1, wschod1, dzien1, zachod1, noc1);
   //pora(&aktualny, pwm2, maxPower2, wschod2, dzien2, zachod2, noc2);
   //pora(&aktualny, pwm3, maxPower3, wschod3, dzien3, zachod3, noc3);
@@ -61,7 +84,7 @@ void loop() {
 
 void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zachod, int noc) {
   if (t->sekundy >= wschod and t->sekundy < dzien) {
-    wschodzi(&aktualny, pwm, maxPower, 0, wschod, dzien);
+    wschodzi(&aktualny, pwm, maxPower, wschod, dzien);
     Serial.println("jest wschod");
   }
   if (t->sekundy >= dzien and t->sekundy < zachod) {
@@ -69,7 +92,7 @@ void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zach
     Serial.println("jest dzien");
   }
   if (t->sekundy >= zachod and t->sekundy < noc) {
-    zachodzi(&aktualny, pwm, maxPower, 0, zachod, noc);
+    zachodzi(&aktualny, pwm, maxPower, zachod, noc);
     Serial.println("jest zachod");
   }
 
@@ -81,11 +104,10 @@ void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zach
     //--------------------//
   }
 
-  oswietlenie(&aktualny, pwm, maxPower, zachod, noc);
+  //oswietlenie();
 }
 
-void wschodzi(struct czas *t, int kanal, int maxPower, int minPower, int wschod, int dzien) {
-  int rozciagniecie;
+void wschodzi(struct czas *t, int kanal, int maxPower, int wschod, int dzien) {
   Serial.println(" i wschodzi z moca: ");
   int kierunek = HIGH;
   if (t->milisekundy == 0)
@@ -95,8 +117,7 @@ void wschodzi(struct czas *t, int kanal, int maxPower, int minPower, int wschod,
   Serial.println(tmp);
 }
 
-void zachodzi(struct czas *t, int kanal, int maxPower, int minPower, int noc, int zachod) {
-  int rozciagniecie;
+void zachodzi(struct czas *t, int kanal, int maxPower, int noc, int zachod) {
   Serial.println(" i zachodzi z moca: ");
   int kierunek = LOW;
   if (t->milisekundy == 0)
@@ -116,19 +137,14 @@ void softPWM(int kanal, int wypelnienie, bool kierunek) {
 }
 
 void oswietlenie(struct czas *t, int kanal, int maxPower, int noc, int zachod) {
-  const int minPower = 10;        //do tej wartosci zmniejszy sie oswietlenie
   int liczbaWywolan;
   bool stanPoprzedni;             //kontroluje czy nastapilo zewnetrzne wlaczenie czy wylaczenie oswietlenia. jesli 1 to nastapilo wylaczenie, jesli 0 nastapilo wlaczenie
   if (digitalRead(sensor))
     liczbaWywolan++;
   if (liczbaWywolan >= prog and stanPoprzedni) {                 //prog jest const i wynosi 3
     liczbaWywolan = 0;
-    if (stanPoprzedni)
-      zachodzi(&aktualny, kanal, maxPower, minPower,  t->sekundy, t->sekundy+10);
-    else
-      wschodzi(&aktualny, kanal, maxPower, minPower,  t->sekundy, t->sekundy+10);
+    zachodzi(&aktualny, kanal, maxPower, zachod, noc);
     stanPoprzedni = !stanPoprzedni;
-    
   }
 }
 
