@@ -2,36 +2,36 @@
 const int pwm1 = 9;
 const int pwm2 = 10;
 const int pwm3 = 11;
-const int sensor = 6;
+const int sensor = 12;
 const int prog = 3;
 
 //definicje godziny wschodu, podane w sekundach mierzonych od polnocy
 //np. wschod o 6.00 to 6*3600 + 0*60 = 21600
 //wschod to start sterownika
 const int wschod1 = 0;
-const int wschod2 = 20;
-const int wschod3 = 15;
+const int wschod2 = 0;
+const int wschod3 = 0;
 
 //definicje godziny poranka, podane w sekundach mierzonych od polnocy
 //np. dzien o 6.15 to 6*3600 + 15*60 = 22500
 //dzien1 to sekunda od ktorej zaczyna sie dzien
-const int dzien1  = 15;
-const int dzien2  = 35;
-const int dzien3  = 30;
+const int dzien1  = 930;
+const int dzien2  = 935;
+const int dzien3  = 940;
 
 //definicje godziny zachodu, podane w sekundach mierzonych od polnocy
 //np. zachod o 20.00 to 22*3600 + 0*60 = 72000
 //zachod to sekunda od ktorej zaczyna sie zachod
-const int zachod1 = 30;
-const int zachod2 = 50;
-const int zachod3 = 45;
+const int zachod1 = 1000;
+const int zachod2 = 1005;
+const int zachod3 = 1010;
 
 //definicje godziny poranka, podane w sekundach mierzonych od polnocy
 //np. noc o 20.15 to 22*3600 + 15*60 = 72900
 //noc to sekunda od ktorej zaczyna sie noc
-const int noc1 = 45;
-const int noc2 = 65;
-const int noc3 = 60;
+const int noc1 = 1500;
+const int noc2 = 1505;
+const int noc3 = 15010;
 
 //// Maksymalna moc kanalu [%] //////
 const int maxPower1 = 30;
@@ -78,8 +78,8 @@ void loop() {
 
   //zegar(&aktualny);
   pora(&aktualny, pwm1, maxPower1, wschod1, dzien1, zachod1, noc1);
-  //pora(&aktualny, pwm2, maxPower2, wschod2, dzien2, zachod2, noc2);
-  //pora(&aktualny, pwm3, maxPower3, wschod3, dzien3, zachod3, noc3);
+  pora(&aktualny, pwm2, maxPower2, wschod2, dzien2, zachod2, noc2);
+  pora(&aktualny, pwm3, maxPower3, wschod3, dzien3, zachod3, noc3);
 }
 
 void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zachod, int noc) {
@@ -104,15 +104,16 @@ void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zach
     //--------------------//
   }
 
-  //oswietlenie();
+  oswietlenie(&aktualny, pwm, maxPower, zachod, noc);
 }
 
 void wschodzi(struct czas *t, int kanal, int maxPower, int wschod, int dzien) {
   Serial.println(" i wschodzi z moca: ");
+  float mocPrzeliczona = maxPower * (9256 / 1024);
   int kierunek = HIGH;
   if (t->milisekundy == 0)
     rozciagniecie++;
-  int tmp = (maxPower / (dzien - wschod)) * rozciagniecie;
+  int tmp = (mocPrzeliczona / (dzien - wschod)) * rozciagniecie;
   softPWM(kanal, tmp, kierunek);
   Serial.println(tmp);
 }
@@ -122,7 +123,8 @@ void zachodzi(struct czas *t, int kanal, int maxPower, int noc, int zachod) {
   int kierunek = LOW;
   if (t->milisekundy == 0)
     rozciagniecie++;
-  int tmp = (maxPower / (noc - zachod)) * rozciagniecie;
+  float wspolczynnikSoft = (maxPower / (noc - zachod));
+  int tmp = wspolczynnikSoft * rozciagniecie;
   softPWM(kanal, tmp, kierunek);
   Serial.println(tmp);
 }
@@ -136,15 +138,25 @@ void softPWM(int kanal, int wypelnienie, bool kierunek) {
   }
 }
 
+int buttonPushCounter = 0;   // counter for the number of button presses
+int buttonState = 0;         // current state of the button
+int lastButtonState = 0;     // previous state of the button
+
 void oswietlenie(struct czas *t, int kanal, int maxPower, int noc, int zachod) {
-  int liczbaWywolan;
-  bool stanPoprzedni;             //kontroluje czy nastapilo zewnetrzne wlaczenie czy wylaczenie oswietlenia. jesli 1 to nastapilo wylaczenie, jesli 0 nastapilo wlaczenie
-  if (digitalRead(sensor))
-    liczbaWywolan++;
-  if (liczbaWywolan >= prog and stanPoprzedni) {                 //prog jest const i wynosi 3
-    liczbaWywolan = 0;
-    zachodzi(&aktualny, kanal, maxPower, zachod, noc);
-    stanPoprzedni = !stanPoprzedni;
+  buttonState = digitalRead(sensor);
+  if (buttonState != lastButtonState) {
+    if (buttonState == HIGH) {
+      buttonPushCounter++;
+      Serial.println(buttonPushCounter);
+    }
+  }
+  lastButtonState = buttonState;
+
+  if (buttonPushCounter % 4 == 0) {
+    wschodzi(&aktualny, kanal, maxPower, t->sekundy, t->sekundy+5);
+  } 
+  if (buttonPushCounter % 8 == 0) {
+    zachodzi(&aktualny, kanal, maxPower, t->sekundy, t->sekundy+5);
   }
 }
 
@@ -154,8 +166,5 @@ void zegar(struct czas *t) {
   if (t->milisekundy == 999) {
     t->milisekundy = 0;
     t->sekundy++;
-  }
-  if (aktualny.sekundy == 86400) {         //doba 86400 sekund
-    aktualny.sekundy = 0;
   }
 }
