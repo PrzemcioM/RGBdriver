@@ -1,107 +1,112 @@
 //// Piny PWM /////////////////////////
-#define pwmR 0                   
-#define pwmG 1               
-#define pwmB 4                               
+#define pwm1 0
+#define pwm2 1
+#define pwm3 4
 
-//// Czas wschodu [s] /////////////////
-#define sunrise1 360
-#define sunrise2 720
-#define sunrise3 1080
+//definicje godziny wschodu, podane w sekundach mierzonych od polnocy
+//np. wschod o 6.00 to 6*3600 + 0*60 = 21600
+#define wschod1 15
+#define wschod2 20
+#define wschod3 15
 
-//// Czas swiecenia pelna moca [s] ///
-#define lightingTime1 1080
-#define lightingTime2 720
-#define lightingTime3 360
+//definicje godziny poranka, podane w sekundach mierzonych od polnocy
+//np. dzien o 6.15 to 6*3600 + 15*60 = 22500
+#define dzien1  30
+#define dzien2  35
+#define dzien3  30
 
-//// Czas zachodu [s] ////////////////
-#define sunset1 360
-#define sunset2 360
-#define sunset3 360
+//definicje godziny zachodu, podane w sekundach mierzonych od polnocy
+//np. zachod o 20.00 to 22*3600 + 0*60 = 72000
+#define zachod1 45
+#define zachod2 50
+#define zachod3 45
+
+//definicje godziny poranka, podane w sekundach mierzonych od polnocy
+//np. noc o 20.15 to 22*3600 + 15*60 = 72900
+#define noc1 60
+#define noc2 65
+#define noc3 60
 
 //// Maksymalna moc kanalu [%] //////
 #define maxPower1 30
-#define maxPower2 75
-#define maxPower3 75
+#define maxPower2 30
+#define maxPower3 30
 
-//// Odwrocenia dzialania PWMow [true/false]
-#define pwm1Invert false
-#define pwm2Invert false
-#define pwm3Invert false
-
-//// Opoznienie zalaczenia obwodu [s]
-#define pwm1Delay 1
-#define pwm2Delay 45
-#define pwm3Delay 90
-
-struct czas{
+struct czas {
   int milisekundy;
   int sekundy;
-  int minuty;
-  int godziny;
 };
+struct czas aktualny;
 
-#define LED_BUILTIN 1
+int rozciagniecie;
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(pwmR, OUTPUT);
-  pinMode(pwmG, OUTPUT);
-  pinMode(pwmB, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(pwm1, OUTPUT);
+  pinMode(pwm2, OUTPUT);
+  pinMode(pwm3, OUTPUT);
 }
 
 void loop() {
-  delay(1);
-  struct czas aktualny;
   zegar(&aktualny);
-  zapalanie(&aktualny);
-   
+  pora(&aktualny, pwm1, maxPower1, wschod1, dzien1, zachod1, noc1);
+  pora(&aktualny, pwm2, maxPower2, wschod2, dzien2, zachod2, noc2);
+  pora(&aktualny, pwm3, maxPower3, wschod3, dzien3, zachod3, noc3);
 }
 
-void softPWM( int wypelnienieR, int wypelnienieG, int wypelnienieB){
-    for( int i = 0 ; i < 1000 ; i++){
-      if( i < wypelnienieR)
-        digitalWrite(pwmR,HIGH);
-      else 
-        digitalWrite(pwmR,LOW);
-
-      if( i < wypelnienieG)
-        digitalWrite(pwmG,HIGH);
-      else 
-        digitalWrite(pwmG,LOW);
-
-      if( i < wypelnienieB)
-        digitalWrite(pwmB,HIGH);
-      else 
-        digitalWrite(pwmB,LOW);
-   }
+bool stan = LOW;
+void zegar(struct czas *t) {
+  delay(1);
+  t->milisekundy++;
+  if (t->milisekundy == 999) {
+    t->milisekundy = 0;
+    t->sekundy++;
+  }
+  if (aktualny.sekundy == 86400) {         //doba 86400 sekund
+    aktualny.sekundy = 0;
+  }
 }
 
-void zegar(struct czas *t){
-   t->milisekundy = (t->milisekundy)+1;
-   
-   if ( t->milisekundy == 999){
-      t->sekundy++;
-      t->milisekundy = 0;
-   }
-   
-   if ( t->sekundy == 59){
-    t->sekundy = 0;
-    t->minuty++;
-   }
-   
-   if ( t->minuty == 59 ){
-    t->minuty = 0;
-    t->godziny++;
-   }
+void pora(struct czas *t, int pwm, int maxPower, int wschod, int dzien, int zachod, int noc) {
+  int rozciagniecie;
+  if (t->sekundy < wschod) {
+    wschodzi(&aktualny, pwm, maxPower, wschod, dzien);
+  }
+  if ( dzien < t->sekundy) {
+    analogWrite(pwm, maxPower);
+  }
+  if (zachod < t->sekundy) {
+    zachodzi(&aktualny, pwm, maxPower, zachod, noc);
+  }
+
+  //to przypisane czasu potrzebne jest tylko do testu, zeby skrocic petle
+  if (noc < t->sekundy) {
+    digitalWrite(pwm, LOW);
+    //   aktualny.sekundy = 0; //--------------------//
+  }
 }
 
-void zapalanie(struct czas *t){
-  for (int i=t->sekundy; i < 30; i++)
-    softPWM(i, 0, 0);
+void wschodzi(struct czas *t, int kanal, int maxPower, int wschod, int dzien) {
+  int kierunek = HIGH;
+  if (t->milisekundy == 0)
+    rozciagniecie++;
+  int tmp = (maxPower / (dzien - wschod)) * rozciagniecie;
+  softPWM(kanal, tmp, kierunek);
 }
 
+void zachodzi(struct czas *t, int kanal, int maxPower, int noc, int zachod) {
+  int kierunek = LOW;
+  if (t->milisekundy == 0)
+    rozciagniecie++;
+  int tmp = (maxPower / (noc - zachod)) * rozciagniecie;
+  softPWM(kanal, tmp, kierunek);
+}
 
-
-
-
+void softPWM(int kanal, int wypelnienie, bool kierunek) {
+  for ( int i = 0 ; i < 1000 ; i++) {
+    if ( i < wypelnienie)
+      digitalWrite(kanal, kierunek);
+    else
+      digitalWrite(kanal, !kierunek);
+  }
+}
